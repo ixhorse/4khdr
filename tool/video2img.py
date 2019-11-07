@@ -3,6 +3,7 @@ import sys
 import glob
 import shutil
 import random
+import traceback
 import numpy as np
 import cv2
 from multiprocessing import Pool
@@ -21,14 +22,25 @@ image_540p_dir = image_dir + '/540p'
 
 def convert_worker(video_path, img_dir):
     # convert video to frames
-    img_dir = os.path.join(img_dir, os.path.basename(video_path)[:-4])
-    os.mkdir(img_dir)
+    img_dir_base = os.path.join(img_dir, os.path.basename(video_path)[:-4])
+    for i in range(4):
+        os.mkdir(img_dir_base + 'x%d' % i)
 
     videoCapture = cv2.VideoCapture(video_path)
     cnt = 0
     success, frame = videoCapture.read()
+    h, w = frame.shape[:2]
     while(success):
-        cv2.imwrite(img_dir + '/%04d.png' % cnt, frame, [int(cv2.IMWRITE_PNG_COMPRESSION), 3])
+        for i in range(2):
+            for j in range(2):
+                try:
+                    cv2.imwrite(img_dir_base + 'x{}/{:04d}.png'.format(i*2+j, cnt),
+                                frame[int(i * h / 2) : int((i+1) * h / 2),
+                                      int(j * w / 2) : int((j+1) * w / 2),
+                                      :], 
+                                [int(cv2.IMWRITE_PNG_COMPRESSION), 3])
+                except Exception as e:
+                    traceback.print_exc()
         cnt += 1
         success, frame = videoCapture.read()
 
