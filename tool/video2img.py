@@ -19,28 +19,35 @@ test_dir = os.path.join(data_root, 'SDR_540p_test')
 image_dir = data_root + '/image'
 image_4k_dir = image_dir + '/4k'
 image_540p_dir = image_dir + '/540p'
+image_test_dir = image_dir + '/540p_test'
 
-def convert_worker(video_path, img_dir):
+def convert_worker(video_path, img_dir, split=False):
     # convert video to frames
     img_dir_base = os.path.join(img_dir, os.path.basename(video_path)[:-4])
-    for i in range(4):
-        os.mkdir(img_dir_base + 'x%d' % i)
+    if split:
+        for i in range(4):
+            os.mkdir(img_dir_base + 'x%d' % i)
+    else:
+        os.mkdir(img_dir_base)
 
     videoCapture = cv2.VideoCapture(video_path)
     cnt = 0
     success, frame = videoCapture.read()
     h, w = frame.shape[:2]
     while(success):
-        for i in range(2):
-            for j in range(2):
-                try:
-                    cv2.imwrite(img_dir_base + 'x{}/{:04d}.png'.format(i*2+j, cnt),
-                                frame[int(i * h / 2) : int((i+1) * h / 2),
-                                      int(j * w / 2) : int((j+1) * w / 2),
-                                      :], 
-                                [int(cv2.IMWRITE_PNG_COMPRESSION), 3])
-                except Exception as e:
-                    traceback.print_exc()
+        if split:
+            for i in range(2):
+                for j in range(2):
+                    try:
+                        cv2.imwrite(img_dir_base + 'x{}/{:04d}.png'.format(i*2+j, cnt),
+                                    frame[int(i * h / 2) : int((i+1) * h / 2),
+                                        int(j * w / 2) : int((j+1) * w / 2),
+                                        :], 
+                                    [int(cv2.IMWRITE_PNG_COMPRESSION), 3])
+                    except Exception as e:
+                        traceback.print_exc()
+        else:
+            cv2.imwrite(img_dir_base + '/{:04d}.png'.format(cnt), frame, [int(cv2.IMWRITE_PNG_COMPRESSION), 3])
         cnt += 1
         success, frame = videoCapture.read()
 
@@ -67,24 +74,33 @@ if __name__ == '__main__':
     os.mkdir(image_dir)
     os.mkdir(image_4k_dir)
     os.mkdir(image_540p_dir)
+    os.mkdir(image_test_dir)
 
     hr_video_paths = []
     for gt_dir in gt_dirs:
         hr_video_paths += glob.glob(gt_dir + '/*.mp4')
     lr_video_paths = [os.path.join(lr_dir, name) for name in train_all_list]
+    test_video_paths = glob.glob(test_dir + '/*.mp4')
     
     n_thread = 12
 
     pool = Pool(n_thread)
     for path in lr_video_paths:
-        pool.apply_async(convert_worker, args=(path, image_540p_dir))
+        pool.apply_async(convert_worker, args=(path, image_540p_dir, True))
     pool.close()
     pool.join()
     print('Finish converting {} 540p videos.'.format(len(lr_video_paths)))
 
     pool = Pool(n_thread)
     for path in hr_video_paths:
-        pool.apply_async(convert_worker, args=(path, image_4k_dir))
+        pool.apply_async(convert_worker, args=(path, image_4k_dir, True))
     pool.close()
     pool.join()
     print('Finish converting {} 4k videos.'.format(len(hr_video_paths)))
+
+    pool = Pool(n_thread)
+    for path in test_video_paths:
+        pool.apply_async(convert_worker, args=(path, image_test_dir, False))
+    pool.close()
+    pool.join()
+    print('Finish converting {} test videos.'.format(len(test_video_paths)))
