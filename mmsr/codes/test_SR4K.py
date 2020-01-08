@@ -24,20 +24,20 @@ def main():
     stage = 1  # 1 or 2, use two stage strategy for REDS dataset.
     flip_test = False
     #### model
-    data_mode = 'sharp_bicubic'
+    data_mode = 'sharp'
     if stage == 1:
-        model_path = '../experiments/001_EDVRwoTSA_scratch_lr4e-4_600k_SR4K_LrCAR4S/models/200000_G.pth'
+        model_path = '../experiments/001_EDVRwoTSA_scratch_lr4e-4_600k_SR4K_LrCAR4S_64_20_5/models/600000_G.pth'
     else:
         model_path = '../experiments/pretrained_models/EDVR_REDS_SR_Stage2.pth'
 
-    N_in = 3  # use N_in images to restore one HR image
+    N_in = 5  # use N_in images to restore one HR image
 
     predeblur, HR_in = False, False
-    back_RBs = 10
+    back_RBs = 20
     if stage == 2:
         HR_in = True
         back_RBs = 20
-    model = EDVR_arch.EDVR(64, N_in, 8, 5, back_RBs, predeblur=predeblur, HR_in=HR_in, w_TSA=False)
+    model = EDVR_arch.EDVR(64, N_in, 8, 5, back_RBs, predeblur=predeblur, HR_in=HR_in, w_TSA=True)
 
     #### dataset
     if stage == 1:
@@ -50,11 +50,11 @@ def main():
     crop_border = 0
     border_frame = N_in // 2  # border frames when evaluate
     # temporal padding mode
-    if data_mode == 'sharp_bicubic':
+    if data_mode == 'sharp':
         padding = 'new_info'
     else:
         padding = 'replicate'
-    save_imgs = False
+    save_imgs = True
 
     save_folder = '../results/{}'.format(data_mode)
     util.mkdirs(save_folder)
@@ -105,7 +105,8 @@ def main():
             output = util.tensor2img(output.squeeze(0))
 
             if save_imgs:
-                cv2.imwrite(osp.join(save_subfolder, '{}.png'.format(img_name)), output)
+                cv2.imwrite(osp.join(save_subfolder, '{}.png'.format(img_name)), output,
+                            [int(cv2.IMWRITE_PNG_COMPRESSION), 1])
 
             logger.info('{:3d} - {:25}'.format(img_idx + 1, img_name))
 

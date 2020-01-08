@@ -28,7 +28,8 @@ def convert_worker(video_path, img_dir, split=False):
         for i in range(4):
             os.mkdir(img_dir_base + 'x%d' % i)
     else:
-        os.mkdir(img_dir_base)
+        if not os.path.exists(img_dir_base):
+            os.mkdir(img_dir_base)
 
     videoCapture = cv2.VideoCapture(video_path)
     cnt = 0
@@ -53,54 +54,58 @@ def convert_worker(video_path, img_dir, split=False):
 
 
 if __name__ == '__main__':
-    train_all_list = os.listdir(lr_dir)
-    random.shuffle(train_all_list)
-    train_list = train_all_list[:int(len(train_all_list) * 0.9)]
-    val_list = train_all_list[int(len(train_all_list) * 0.9):]
-    test_list = os.listdir(test_dir)
+    # train_all_list = os.listdir(lr_dir)
+    # random.shuffle(train_all_list)
+    # train_list = train_all_list[:int(len(train_all_list) * 0.9)]
+    # val_list = train_all_list[int(len(train_all_list) * 0.9):]
+    # test_list = os.listdir(test_dir)
 
-    with open(data_root + '/train.txt', 'w') as f:
-        data = [x[:-4] + '\n' for x in train_list]
-        f.writelines(data)
-    with open(data_root + '/val.txt', 'w') as f:
-        data = [x[:-4] + '\n' for x in val_list]
-        f.writelines(data)
-    with open(data_root + '/test.txt', 'w') as f:
-        data = [x[:-4] + '\n' for x in test_list]
-        f.writelines(data)
+    # with open(data_root + '/train.txt', 'w') as f:
+    #     data = [x[:-4] + '\n' for x in train_list]
+    #     f.writelines(data)
+    # with open(data_root + '/val.txt', 'w') as f:
+    #     data = [x[:-4] + '\n' for x in val_list]
+    #     f.writelines(data)
+    # with open(data_root + '/test.txt', 'w') as f:
+    #     data = [x[:-4] + '\n' for x in test_list]
+    #     f.writelines(data)
 
-    if os.path.exists(image_dir):
-        shutil.rmtree(image_dir)
-    os.mkdir(image_dir)
-    os.mkdir(image_4k_dir)
-    os.mkdir(image_540p_dir)
-    os.mkdir(image_test_dir)
+    # if os.path.exists(image_dir):
+    #     shutil.rmtree(image_dir)
+    # os.mkdir(image_dir)
+    # os.mkdir(image_4k_dir)
+    # os.mkdir(image_540p_dir)
+    # os.mkdir(image_test_dir)
+
+    with open('/home/mcc/4khdr/val.txt') as f:
+        val_list = [x.strip() for x in f.readlines()]
 
     hr_video_paths = []
     for gt_dir in gt_dirs:
         hr_video_paths += glob.glob(gt_dir + '/*.mp4')
-    lr_video_paths = [os.path.join(lr_dir, name) for name in train_all_list]
+    hr_video_paths = [x for x in hr_video_paths if os.path.basename(x)[:-4] in val_list]
+    lr_video_paths = [os.path.join(lr_dir, name+'.mp4') for name in val_list]
     test_video_paths = glob.glob(test_dir + '/*.mp4')
     
     n_thread = 12
 
     pool = Pool(n_thread)
     for path in lr_video_paths:
-        pool.apply_async(convert_worker, args=(path, image_540p_dir, True))
+        pool.apply_async(convert_worker, args=(path, image_540p_dir, False))
     pool.close()
     pool.join()
     print('Finish converting {} 540p videos.'.format(len(lr_video_paths)))
 
     pool = Pool(n_thread)
     for path in hr_video_paths:
-        pool.apply_async(convert_worker, args=(path, image_4k_dir, True))
+        pool.apply_async(convert_worker, args=(path, image_4k_dir, False))
     pool.close()
     pool.join()
     print('Finish converting {} 4k videos.'.format(len(hr_video_paths)))
 
-    pool = Pool(n_thread)
-    for path in test_video_paths:
-        pool.apply_async(convert_worker, args=(path, image_test_dir, False))
-    pool.close()
-    pool.join()
-    print('Finish converting {} test videos.'.format(len(test_video_paths)))
+    # pool = Pool(n_thread)
+    # for path in test_video_paths:
+    #     pool.apply_async(convert_worker, args=(path, image_test_dir, False))
+    # pool.close()
+    # pool.join()
+    # print('Finish converting {} test videos.'.format(len(test_video_paths)))
